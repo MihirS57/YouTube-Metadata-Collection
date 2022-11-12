@@ -1,5 +1,6 @@
 '''
-    python main.py --input "./yt_onlyurl.csv-modified.csv" --api_key "AIzaSyAiBa23mUdvRRlkLGY8cSc7mzv-OQ-JMUY" [--verbose]
+    python main.py --input "./yt_onlyurl.csv-modified.csv" --api_key "" [--verbose]
+    python main.py --input "./Input_Dataset/yt_onlyurl.csv-modified" --api_key "" --verbose --inputrange "100000To110000"
 '''
 
 
@@ -19,10 +20,10 @@ def parse_arguments():
     parser.add_argument('--input', type=str, help="This should be the file containing the list of YouTube URLs, formated as .csv", required=True)
     parser.add_argument('--api_key', type=str, help="This is the private key to access the YouTube API", required=True)
     
-    parser.add_argument('--url_output',type=str,default='./df_url_description.csv', help="It is the file, formatted as .csv, containing the columns (URL, type, id)")
-    parser.add_argument('--video_output',type=str,default='./df_video_metadata.csv', help="It contains the metadata extracted for each unique video_id")    
-    parser.add_argument('--channel_output',type=str,default='./df_channel_metadata.csv', help="It contains the metadata extracted for each unique channel")  
-    
+    parser.add_argument('--url_output',type=str,default='./Output_Dataset/df_url_description.csv', help="It is the file, formatted as .csv, containing the columns (URL, type, id)")
+    parser.add_argument('--video_output',type=str,default='./Output_Dataset/df_video_metadata.csv', help="It contains the metadata extracted for each unique video_id")    
+    parser.add_argument('--channel_output',type=str,default='./Output_Dataset/df_channel_metadata.csv', help="It contains the metadata extracted for each unique channel")  
+    parser.add_argument('--inputrange',type=str,help='range of input videos')
     parser.add_argument("-v", "--verbose", help="increase output verbosity",action="store_true")
     
     args = parser.parse_args()
@@ -39,7 +40,7 @@ def main():
         print('[INFO] - ', args)
     
     # input file reading
-    df_urls = pd.read_csv(args.input)
+    df_urls = pd.read_csv(str(args.input)+str(args.inputrange)+".csv")
     if args.verbose:
         print("[INFO] - Number of URLs in the input file: ", df_urls.shape[0])
 
@@ -65,8 +66,9 @@ def main():
     df_video_metadata = utils.get_video_metadata(yt, df_video_ids.id.tolist(), verbose= args.verbose)
     if args.verbose:
         print("[INFO] - Number of videos whose metadata have been retrieved: ", df_video_metadata.shape[0])
-        
-    df_video_metadata.to_csv(args.video_output,index=False)
+
+    video_output_address = './Output_Dataset/df_video_metadata('+str(args.inputrange)+").csv"   
+    df_video_metadata.to_csv(video_output_address,index=False)
         
     # metadata channel
     if df_channel_ids.shape[0] != 0:
@@ -106,7 +108,7 @@ def main():
             if args.verbose:
                 print("[INFO] - Number of moderated resources: ", df_urls[df_urls.status=='moderated'].shape[0])
             
-            df_urls.to_csv(args.url_output,index=False)
+            df_urls.to_csv(f'./Output_Dataset/df_url_description('+str(args.inputrange)+').csv',index=False)
             
             if args.verbose:
                 print("[INFO] - Script ended")
