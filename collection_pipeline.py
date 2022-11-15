@@ -114,8 +114,23 @@ def segregateVideosAndChannels(url_list):
     video_list = pd.Series(video_list).value_counts().keys().tolist() 
     channel_list = pd.Series(channel_list).value_counts().keys().tolist() 
     return video_list, channel_list, count   
+
+def create10kBatch(itr_num,video_ids):
+    final_urls = []
+    final_ids = []
+    count = 0
+    for id in video_ids:
+        final_urls.append(f'https://www.youtube.com/watch?v={id}')
+        final_ids.append(id)
+        count = count+1
+        if count == 10000:
+            break
+        new_url_df = pd.DataFrame({'video_id':video_ids, 'urls': final_urls})
+        new_url_df.to_csv(f'./Input_Dataset/video_df_{itr*10}kTo{(itr+1)*10}k.csv',index=False)
+        return new_url_df, final_ids
+
+def create50Batch(tenK_ids):
     
-    return link_type,link_id
 dataset_src = input('Dataset Name: (Include .csv) ')
 dataset_org = input('Origin of dataset: (FB for Facebook & TW for Twitter) ')
 dataset_sub = readDatasetWithPath(f'./Input_Dataset/{dataset_src}')
@@ -123,5 +138,10 @@ url_column_name = input('Name of the table column which stores the YouTube URLs:
 dataset_url_list = list(dataset_sub[url_column_name])
 dataset_videos, dataset_channel, yt_count = segregateVideosAndChannels(dataset_url_list)
 print(f'Total YouTube links in dataset: {yt_count}, and size of dataset is: {len(dataset_url_list)}')
+
+#First we will start collection for the videos
+# First make a mega batch of 10000 IDs out of n, and using those 10,000 IDs we will create mini batches of 50 to serve the API.
+
+
 
 
