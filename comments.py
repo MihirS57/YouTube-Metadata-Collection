@@ -1,6 +1,9 @@
 import pandas as pd
 import requests
 import json
+#Important link for parent comments: https://developers.google.com/youtube/v3/docs/comments#id
+#Important link for comment threads: https://developers.google.com/youtube/v3/docs/comments/list?apix_params=%7B%22part%22%3A%5B%22snippet%22%5D%2C%22maxResults%22%3A100%2C%22parentId%22%3A%22UgwXsDqMuiXOSHtV9p54AaABAg%22%7D&apix=true
+#Refer postman for implementation
 def getCommentsForVideo(video_id):
     comment_list = []
     count = 0
@@ -9,7 +12,7 @@ def getCommentsForVideo(video_id):
     if 'items' in comment_json_data:
         for x in range(0,len(comment_json_data['items'])):
             comment_element = {
-                'id': comment_json_data['items'][x]['id'],
+                'id': comment_json_data['items'][x]['snippet']['topLevelComment']['id'],
                 'textOriginal': comment_json_data['items'][x]['snippet']['topLevelComment']['snippet']['textOriginal'],
                 'authorDisplayName': comment_json_data['items'][x]['snippet']['topLevelComment']['snippet']['authorDisplayName'],
                 'likeCount': comment_json_data['items'][x]['snippet']['topLevelComment']['snippet']['likeCount'],
