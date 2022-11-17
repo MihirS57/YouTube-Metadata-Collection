@@ -2,9 +2,19 @@ import pandas as pd
 import requests
 import json
 import math
+import os
 #Important link for parent comments: https://developers.google.com/youtube/v3/docs/comments#id
 #Important link for comment threads: https://developers.google.com/youtube/v3/docs/comments/list?apix_params=%7B%22part%22%3A%5B%22snippet%22%5D%2C%22maxResults%22%3A100%2C%22parentId%22%3A%22UgwXsDqMuiXOSHtV9p54AaABAg%22%7D&apix=true
 #Refer postman for implementation
+video_wo_comments = []
+def getMaxAbandonedIndexFrom(file_list):
+    max_ind = 0
+    for file_item in file_list:
+        ind = file_item.index('-co')
+        subint = int(file_item[ind+4:len(file_item)-5])
+        if max_ind < subint:
+            max_ind = subint
+    return max_ind
 def getCommentsForVideo(video_id):
     comment_list = []
     count = 0
@@ -16,6 +26,9 @@ def getCommentsForVideo(video_id):
         if comments_from.status_code != 200:
             print(json.loads(comments_from.text))
             print('1',comments_from.status_code)
+            if comment_json_data['error']['errors'][0]['reason'] == 'commentsDisabled':
+                video_wo_comments.append(video_id)
+                return [],0,True
             print(f'{video_id} was the last one')
             return [], 0, False
         if 'items' in comment_json_data:
@@ -85,26 +98,36 @@ print(f'For {total_comments} comments we need to hit the API {hit_cnts} times')
 video_comments = []
 completed = True
 prev_completed = True
+og_no_comments = 0
 abandoned_index = -1
 video_ids = list(df_video_metadata['video_id'])
 for idx, vid in enumerate(video_ids):
     if prev_completed:
-        comments, len_comments, completed = getCommentsForVideo(vid)
-        if completed:
-            video_comments.append(comments)
-            og_len = df_video_metadata['video_comment_count'][idx]
-            print(f'Fetched {len_comments} out of {og_len}')
+        og_no_comments = df_video_metadata['video_comment_count'][idx]
+        if og_no_comments > 0 and not math.isnan(og_no_comments):
+            comments, len_comments, completed = getCommentsForVideo(vid)
+            if completed:
+                video_comments.append(comments)
+                og_len = df_video_metadata['video_comment_count'][idx]
+                print(f'Fetched {len_comments} out of {og_len}')
+            else:
+                print('Some error occured while fetching the comments...')
+                video_comments.append([{'id': 'API Limit Exceeded',
+                        'textOriginal': 'API Limit Exceeded',
+                        'authorDisplayName': 'API Limit Exceeded',
+                        'likeCount': 'API Limit Exceeded',
+                        'publishedAt': 'API Limit Exceeded',
+                        'updatedAt': 'API Limit Exceeded'}])
+                abandoned_index = idx
+                prev_completed = False
+                print('Abandoning the rest of the dataset')
         else:
-            print('Some error occured while fetching the comments...')
             video_comments.append([{'id': 'API Limit Exceeded',
-                    'textOriginal': 'API Limit Exceeded',
-                    'authorDisplayName': 'API Limit Exceeded',
-                    'likeCount': 'API Limit Exceeded',
-                    'publishedAt': 'API Limit Exceeded',
-                    'updatedAt': 'API Limit Exceeded'}])
-            abandoned_index = idx
-            prev_completed = False
-            print('Abandoning the rest of the dataset')
+                'textOriginal': 'API Limit Exceeded',
+                'authorDisplayName': 'API Limit Exceeded',
+                'likeCount': 'API Limit Exceeded',
+                'publishedAt': 'API Limit Exceeded',
+                'updatedAt': 'API Limit Exceeded'}])
     else:
         video_comments.append([{'id': 'API Limit Exceeded',
                 'textOriginal': 'API Limit Exceeded',
@@ -117,6 +140,10 @@ if completed:
     df_video_metadata = df_video_metadata.assign(parent_comments=video_comments)
     df_video_metadata.to_csv(f'./Next/TW-v_(0to10000)_NXT-ct.csv',index=False)
 else:
-    print(f'Saving the dataset as TW-v_(0to10000)_INC-co({abandoned_index}).csv')
-    df_video_metadata = df_video_metadata.assign(parent_comments=video_comments)
-    df_video_metadata.to_csv(f'./Incomplete/TW-v_(0to10000)_INC-co({abandoned_index}).csv',index=False)
+    incomplete_list = os.listdir('./Incomplete')
+    max_abandoned = getMaxAbandonedIndexFrom(incomplete_list)
+    if max_abandoned < abandoned_index:
+        print(f'Saving the dataset as TW-v_(0to10000)_INC-co({abandoned_index}).csv')
+        df_video_metadata = df_video_metadata.assign(parent_comments=video_comments)
+        df_video_metadata.to_csv(f'./Incomplete/TW-v_(0to10000)_INC-co({abandoned_index}).csv',index=False)
+    
